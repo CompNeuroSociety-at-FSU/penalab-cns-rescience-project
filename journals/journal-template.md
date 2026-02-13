@@ -6,8 +6,6 @@ Every researcher should keep a lab notebook/research journal because:
 - It allows you to keep a paper trail of your contributions to a project for legal purposes!
 - It helps keep you organized and productive!
 
-## Belongs to Jonathan Alcineus
-
 ## General Guidlines for Maintaining a Private Research Journal
 
 1. ### **Structure your journal** with clear sections and dates:
