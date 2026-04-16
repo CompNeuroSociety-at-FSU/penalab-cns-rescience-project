@@ -53,3 +53,8 @@ venv.bak/
 *.temp
 tmp/
 temp/
+
+
+# Journals
+journals/journal-1.md
+journals/journal-file-name.md
