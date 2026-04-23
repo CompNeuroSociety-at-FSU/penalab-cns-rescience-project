@@ -92,6 +92,20 @@ class gfs_object:
         self.leak_reversal_potential = -85*mV
         self.specific_membrane_capitance = 1*uF /cm**2
         self.specific_axial_resistance = 35 * ohm * cm
+        self.maximal_t_conductance = 300 * mS / cm**2
+        self.maximal_p_conductance = 0.11*mS / cm**2
+        self.maximal_v_conductance = 10*mS / cm**2
+        self.young_gap_conductance = 135*uS
+        self.old_gap_conductance = 34.5*uS
+        self.Chemical_synapse_rise = 0.1*ms
+        self.Chemical_synapse_decay = 1*ms
+        self.Chemical_synapse_reversal = 0
+        self.Chemical_synapse_delay = 0.15*ms
+        self.Chemical_synapse_peak_conductance = 80*uS
+        self.Neuromuscular_junction_delay = 0.35*ms
+        self.Leak_reversal_potential = -85*mV
+        self.Sodium_reversal_potential = 65*mV
+        self.Potassium_reversal_potential = -74*mV
 
 
         # Sample differential equation for the flow of eletricity through this ion
