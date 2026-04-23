@@ -13,72 +13,48 @@ import matplotlib
 import numpy
 
 class gfs_object:
-    # Paper decided to experiment with using 4 neurons
-    # I wanted there to be an option to change the number of neurons within
-    # the GFS, so I decided to have the default number of neurons match the paper
-    # but I could experiment with more neurons if I wanted to
+    # Paper designed experiment with using 4 neurons
+    # Through further analysis of the paper, the authors' design for the neurons to have morphology to be composed of 
+    # cylinders, usually relying on the axons and dendrites
+    # No soma is necessary at all for function, like it is not necessary
+    # The axon is the main core of the geometery, according the original paper's code
 
-    # num_gf = 1, num_ttm = 1, num_psi = 1, num_dlmn = 1, Save these just in case for the number of neurons if want to change
-    #         self.num_gf = num_gf # Number of GF neurons in this GFS, default is 1
-    #   self.num_ttm = num_ttm # Number of TTMn neurons in this GFS, default is 1
-    #   self.num_psi = num_psi # Number of PSI neurons in this GFS, default is 1
-    #   self.num_dlmn = num_dlmn # Number of DLMn neurons in this GFS, default is 1
-    # We'll have to use the Spatial Neuron class that only covers one Neurons
+    # We'll have to use the Spatial Neuron class to account for the neurons' geometry
 
     def __init__(self):
-        # Now we are getting to describe the shapes for each of th eneurons, this is according to page 3 of the ENEURO Paper
+        # Now we are getting to describe the shapes for each of the neurons, this is according to page 3 of the ENEURO Paper
 
-    
-
-        ## Another AI Generated, Beware, AI generate
-        # 1. Calculate the length of a single compartment (50 um total / 51 chunks)
-        segment_length = 50 / 51
-
-        # 2. Create an array of exactly 51 lengths, and attach the unit
-        axon_lengths = ones(51) * segment_length * um
 
         # The paper uses 51 iso-segments for the axons and dendrites (all of the cylindrical segments of the paper)
         # First we are putting the default morphology (or shape) for the gf neuron
-        # The GF neuron does not contains any axons or dendrites, so nothing else needed other than using Soma class
+        # The GF neuron does not contains any axons or dendrites, so one cylinder will represent this neuron
         # But it does have electrical synpases between the axon of the PSI and the dendrite of the TTmn
-        self.gf_neuron_morph = Soma(diameter = 8*um)
+        self.gf_neuron_morph = Cylinder(diameter = 8*um, length=400*um)
 
-        # Figure out that length BS later for the gf_neuron: length=400*um
 
         # Here is the morphology for the TTMn neuron, it contains two dendrites and one active axon
-        self.ttmn_neuron_morph = Soma(diameter=6*um) 
-        # self.ttmn_neuron_morph.medial_dendrite = Cylinder(diameter=6*um, length=axon_lengths, n=51)
+        self.ttmn_neuron_morph = Cylinder(diameter=6*um, length=50*um, n=51)
+
         self.ttmn_neuron_morph.medial_dendrite = Cylinder(diameter=6*um, length=60*um, n=51)
-        #self.ttmn_neuron_morph.lateral_dendrite = Cylinder(diameter=6*um, length=axon_lengths, n=51)
+
         self.ttmn_neuron_morph.lateral_dendrite = Cylinder(diameter=6*um, length=30*um, n=51)
-        # self.ttmn_neuron_morph.axon = Cylinder(diameter=6*um, length=axon_lengths, n=51)
-        self.ttmn_neuron_morph.axon = Cylinder(diameter=6*um, length=50*um, n=51)
+
 
         # Here is the morphology for the PSI neuron, one axon and one dentrite
-        self.psi_neuron_morph = Soma(diameter=4.5*um)
-        # self.psi_neuron_morph.axon = Cylinder(diameter=4.5*um, length=axon_lengths, n=51)
-        self.psi_neuron_morph.axon = Cylinder(diameter=4.5*um, length=90*um, n=51)
-        # self.psi_neuron_morph.dentrite = Cylinder(diameter=4.5*um, length=axon_lengths, n=51)
+        self.psi_neuron_morph = Cylinder(diameter=4.5*um, length=90*um, n=51)
+
         self.psi_neuron_morph.dendrite = Cylinder(diameter=4.5*um, length=170*um, n=51)
 
         # Here is the morphology for the DLMn neuron, 2 diameters (one proximal one distal) and both one axon and dentrite
         # Nah, dude. The axon is tapered but the diameter for the neuron is not
 
-
-        # I will use cable theory to calculate the diameter of the dlmn neuron
-        # But for the purposes of getting the structure of the code, we'll use 
-        # 8 micrometers for the neuron's diameter
-        self.dlmn_neuron_morph = Soma(diameter=8*um)
         prox_diam = 2*um
         dist_diam = 4*um
 
-        # AI Generated code beware
-        axon_diameters = linspace(prox_diam, dist_diam, 52)
-        # AI generated up there
+        axon_diameters = [prox_diam, dist_diam]
 
-        self.dlmn_neuron_morph.axon = Section(diameter=axon_diameters, length=axon_lengths, n=51)
-        # self.dlmn_neuron_morph.axon = Section(diameter=axon_diameters, length=50*um, n=51)
-        # self.dlmn_neuron_morph.dentrite = Cylinder(diameter=2*um, length=axon_lengths)
+        self.dlmn_neuron_morph = Section(diameter=axon_diameters, length=50*um, n=51)
+       
         self.dlmn_neuron_morph.dendrite = Cylinder(diameter=2*um, length=100*um)
 
 
