@@ -63,6 +63,7 @@ class gfs_object:
         # Make sure to put the rest of the membrane properties from the paper
 
 
+
         # These are the most basic membrane properties from the paper
         self.leak_conductance = 0.03*mS / cm**2
         self.leak_reversal_potential = -85*mV
@@ -85,13 +86,21 @@ class gfs_object:
 
 
         # This will be the set of equations that are used for the active sections of the neurons (axons)
+        # Still trying to figure the m, h and n, number values, just remove them for now
         eqs_for_active= '''
-        Im = : -g_bar_Na * (m**3) * h *(v-E_Na) - g_bar_K * (n**4) * (v-E_k) - gl * (v - El):amp/meter**2
-        I_inj : amp (point current) # The current the included externally from the membrane
+        Im = -g_bar_Na * (m**3) * h *(v-E_Na) - g_bar_K * (n**4) * (v-E_k):amp/meter**2
+        I_inj = amp (point current) # The current the included externally from the membrane
 
-        
+        # dm/dt = (minf - m)/(mtau) : 1 # 1 on the side represents whether it is unit-less or not!
+        # dh/dt = (hinf - h)/(htau) : 1
+        # dn/dt = (ninf - n )/(ntau): 1
+
+        # minf = 1/(1+exp((vm-v1_2m)/km)) : 1
+        # mtau = 1 * ms : second
 
         '''
+        
+        
 
         # These will be the set of equations that will be used for the passive section of the neurons
         eqs_for_passive = '''
