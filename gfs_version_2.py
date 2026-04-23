@@ -73,25 +73,31 @@ class gfs_object:
         self.maximal_v_conductance = 10*mS / cm**2
         self.young_gap_conductance = 135*uS
         self.old_gap_conductance = 34.5*uS
-        self.Chemical_synapse_rise = 0.1*ms
-        self.Chemical_synapse_decay = 1*ms
-        self.Chemical_synapse_reversal = 0
-        self.Chemical_synapse_delay = 0.15*ms
-        self.Chemical_synapse_peak_conductance = 80*uS
-        self.Neuromuscular_junction_delay = 0.35*ms
-        self.Leak_reversal_potential = -85*mV
-        self.Sodium_reversal_potential = 65*mV
-        self.Potassium_reversal_potential = -74*mV
+        self.chemical_synapse_rise = 0.1*ms
+        self.chemical_synapse_decay = 1*ms
+        self.chemical_synapse_reversal = 0
+        self.chemical_synapse_delay = 0.15*ms
+        self.chemical_synapse_peak_conductance = 80*uS
+        self.neuromuscular_junction_delay = 0.35*ms
+        self.leak_reversal_potential = -85*mV
+        self.sodium_reversal_potential = 65*mV
+        self.potassium_reversal_potential = -74*mV
 
 
-        # Sample differential equation for the flow of eletricity through this ion
-        # The differential equation for a passive spatial compartment, AI generated, 
-        # This will be changed later
-        eqs = '''
-        Im = gl * (El - v) : amp/meter**2
-        I_inj : amp (point current) # Placeholder for where we will inject electricity
+        # This will be the set of equations that are used for the active sections of the neurons (axons)
+        eqs_for_active= '''
+        Im = : -g_bar_Na * (m**3) * h *(v-E_Na) - g_bar_K * (n**4) * (v-E_k) - gl * (v - El):amp/meter**2
+        I_inj : amp (point current) # The current the included externally from the membrane
+
+        
+
         '''
 
+        # These will be the set of equations that will be used for the passive section of the neurons
+        eqs_for_passive = '''
+        Im = -gl * (v - El) : amp/meter**2
+        I_inj : amp (point current) # The current the included externally from the membrane
+        '''
     
         # Here are the neurons that will created from the number of neurons listed
         self.gf_neuron = SpatialNeuron(morphology=self.gf_neuron_morph, model=eqs,

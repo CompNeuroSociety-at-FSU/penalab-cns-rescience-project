@@ -252,6 +252,13 @@ Where $E_x$, is the resting potential or reversal equilibrium and $\=g_x$ is the
 - When neuron is at rest, the leak current is balanced by the sodium-potassium pump, so net current is zero
 - Current is injected to neuron by potassium pump
 
+In the paper, to solve the differential equations for the models. They used Euler's method, or the exponential
+method.
+
+Axons are active sections because they can generate spikes.
+
+Dendrites are passive, they can generate charge by producing spikes.
+
 # Super useful Links:
 
 https://brian2.readthedocs.io/en/2.9.0/examples/compartmental.bipolar_cell.html
