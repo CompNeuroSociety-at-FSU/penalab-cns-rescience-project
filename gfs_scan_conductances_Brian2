@@ -1,0 +1,134 @@
+#Created by Gillian Durta
+from brian2 import *
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib
+
+from gfs_version_2 import gfs_object
+
+matplotlib.rcParams['svg.fonttype'] = 'none'
+
+# Initialize FULL Brian2 network
+
+net = gfs_object()
+
+GF = net.GF
+TTMn = net.TTMn
+PSI = net.PSI
+DLMn = net.DLMn
+
+ranges = {
+    'g_gap': np.arange(20, 160, 10) * nS,
+    'gnatbar': np.arange(230e-3, 530e-3, 20e-3) * mS/cm**2,
+    'gkbar': np.arange(1e-3, 25e-3, 1e-3) * mS/cm**2,
+    'gleak': np.arange(0, 100e-6, 5e-6) * mS/cm**2
+}
+
+param1 = 'g_gap'
+param2s = ['gnatbar', 'gkbar', 'gleak']
+
+# SIMPLE delay proxy (replace with real spike detection later)
+
+def fake_delay():
+    return 1 + 0.2*np.random.rand()
+
+
+def run_scan(param1, vals1, param2, vals2):
+
+    TTMn_delays = np.zeros((len(vals1), len(vals2)))
+    DLMn_delays = np.zeros((len(vals1), len(vals2)))
+
+    for i, v1 in enumerate(vals1):
+        for j, v2 in enumerate(vals2):
+
+            # -------------------------
+            # RESET SIMULATION STATE
+            # -------------------------
+            GF.v = -70*mV
+            TTMn.v = -70*mV
+            PSI.v = -70*mV
+            DLMn.v = -70*mV
+
+            # -------------------------
+            # SET PARAMETERS
+            # -------------------------
+            if param1 == 'g_gap':
+                net.gaps.g = v1
+            else:
+                setattr(net.params, param1, v1)
+
+            setattr(net.params, param2, v2)
+
+            # Apply conductance updates
+            for neuron in [GF, TTMn, PSI, DLMn]:
+                if param2 == 'gnatbar':
+                    neuron.gNa = v2
+                elif param2 == 'gkbar':
+                    neuron.gK = v2
+                elif param2 == 'gleak':
+                    neuron.gL = v2
+
+            # -------------------------
+            # RUN SIMULATION
+            # -------------------------
+            run(5*ms)
+
+            # -------------------------
+            # STORE RESULTS (placeholder)
+            # -------------------------
+            TTMn_delays[i, j] = fake_delay()
+            DLMn_delays[i, j] = fake_delay() + 0.4
+
+    return {
+        'TTMn_delays': TTMn_delays,
+        'DLMn_delays': DLMn_delays
+    }
+
+
+
+# RUN SCANS
+fig1 = plt.figure(figsize=(15, 10))
+ii = 1
+
+for param2 in param2s:
+
+    plt.subplot(2, 3, ii)
+
+    delay_dict = run_scan(
+        param1,
+        ranges[param1],
+        param2,
+        ranges[param2]
+    )
+
+    # -------------------------
+    # CLEAN DATA
+    # -------------------------
+    delay_dict['TTMn_delays'][delay_dict['TTMn_delays'] < 0] = np.nan
+    delay_dict['DLMn_delays'][delay_dict['DLMn_delays'] < 0] = np.nan
+
+    # -------------------------
+    # PLOT TTMn
+    # -------------------------
+    plt.contour(np.log(delay_dict['TTMn_delays']), 25)
+    plt.title(f"TTMn vs {param2}")
+
+    plt.subplot(2, 3, ii + 3)
+
+    # -------------------------
+    # PLOT DLMn
+    # -------------------------
+    plt.contour(np.log(delay_dict['DLMn_delays']), 25)
+    plt.title(f"DLMn vs {param2}")
+
+    ii += 1
+
+plt.tight_layout()
+plt.savefig('gfs_param_scan_conductances_brian2.png')
+plt.show()
+
+    ii += 1
+
+plt.tight_layout()
+plt.savefig('gfs_param_scan_conductances_brian2.png')
+plt.show()
