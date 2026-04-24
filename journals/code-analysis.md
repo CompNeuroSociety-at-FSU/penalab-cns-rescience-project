@@ -259,6 +259,11 @@ Axons are active sections because they can generate spikes.
 
 Dendrites are passive, they can generate charge by producing spikes.
 
+
+Page 20 from this paper, golden
+
+https://journals.plos.org/ploscompbiol/article/file?id=10.1371/journal.pcbi.1004189&type=printable
+
 # Super useful Links:
 
 https://brian2.readthedocs.io/en/2.9.0/examples/compartmental.bipolar_cell.html

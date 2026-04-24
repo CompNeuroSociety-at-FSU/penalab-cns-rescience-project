@@ -88,59 +88,57 @@ class gfs_object:
         # This will be the set of equations that are used for the active sections of the neurons (axons)
         # Still trying to figure the m, h and n, number values, just remove them for now
         eqs_for_active= '''
-        Im = -g_bar_Na * (m**3) * h *(v-E_Na) - g_bar_K * (n**4) * (v-E_k):amp/meter**2
+        Im = -g_bar_Na * (m**3) * h *(v-E_Na) - g_bar_K * (n**4) * (v-E_k) -gl * (v - El):amp/meter**2
         I_inj = amp (point current) # The current the included externally from the membrane
-        # (I need X equation):
 
-        # m, n, and h - I need equations
-        # whatis m, n , and h supposed to represent?
-        # m, n and h are proabilities between 0 and 1, of the ion channels opening and closing
-        # Essentially is meant to represent the function of a cell moves (ions???) inside
-        # and 
-        # 
-        # dm/dt = alpham * (1-m) - betam
-        # dh/dt = (hinf - h)/(htau) : 1
-        # dn/dt = (ninf - n )/(ntau): 1
+        # Define the maxium sodium (Na) and potassium conductances (K)
+        g_bar_Na: siemens/meter**2
+        g_bar_K: siemens/meter**2
+
+
+        # To calculate the m, n, and h, it is necessary to caclulate the steady state 
+        # value given by the boltzmann function (page 20 of Gunay), probability
+        # for the gates of the ions to be open or closed
+        m_inf = 1 / (1 + exp((v-(-29.13*mV))/ (-8.92*mV))) : 1
+        n_inf =  1 / (1 + exp((v-(-12.85*mV))/ (-19.91*mV))) : 1
+        h_inf = 1 / (1 + exp((v-(-47.0*mV))/ (5.0*mV))) : 1
+
+        # This calculates the time constants, or speed which the gates open/close
+        # at a given voltage
+        m_tau = (0.13 + 3.43/(1+exp((v+45.35*mV)/(59.6*mV))) * ms : second
+        h_tau =  (0.36 + exp((v + 20.65*mV) / (-10.47*mV))) * ms : second
+        n_tau = (2.03 + 1.96 / (1 + exp((v - 29.83*mV) / (3.12*mV)))) * ms : second
+        
+        dm/dt = (minf - m)/(mtau) : 1
+        dh/dt = (hinf - h)/(htau) : 1
+        dn/dt = (ninf - n )/(ntau): 1
+        '''
+
+        self.eqs_for_gap = '''
+        w: siemens
+        I = (v - vgap)*g*(0.001) : amp (summed)
         '''
         
 
-        # These will be the set of equations that will be used for the passive section of the neurons
-        eqs_for_passive = '''
-        Im = -gl * (v - El) : amp/meter**2
-        I_inj : amp (point current) # The current the included externally from the membrane
-        '''
-    
         # Here are the neurons that will created from the number of neurons listed
         self.gf_neuron = SpatialNeuron(morphology=self.gf_neuron_morph, model=eqs_for_active,
                                        Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
-                                       namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential})
+                                       namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential,
+                                       'E_Na': self.sodium_reversal_potential, 'E_k': self.potassium_reversal_potential})
         self.ttm_neuron = SpatialNeuron(morphology=self.ttmn_neuron_morph, model=eqs_for_active,
                                          Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
-                                         namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential})
+                                         namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential,
+                                         'E_Na': self.sodium_reversal_potential, 'E_k': self.potassium_reversal_potential})
         
-        self.psi_neuron = SpatialNeuron(morphology=self.psi_neuron_morph, model=eqs,
+        self.psi_neuron = SpatialNeuron(morphology=self.psi_neuron_morph, model=eqs_for_active,
                                          Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
-                                         namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential})
-        self.dlmn_neuron = SpatialNeuron(morphology=self.dlmn_neuron_morph, model=eqs,
+                                         namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential,
+                                         'E_Na': self.sodium_reversal_potential, 'E_k': self.potassium_reversal_potential})
+        self.dlmn_neuron = SpatialNeuron(morphology=self.dlmn_neuron_morph, model=eqs_for_active,
                                           Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
-                                          namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential})
+                                          namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential,
+                                          'E_Na': self.sodium_reversal_potential, 'E_k': self.potassium_reversal_potential})
         
-
-        # AI GENERATED CODE, AI GENERATED CODE, WARNING AI GENERATED CODE
-        # ... your existing morphology and neuron setup ...
-        
-        # Add this at the bottom of __init__
-        self.net = Network()
-        self.net.add(self.dlmn_neuron)
-        
-        # If your gf, ttm, and psi neurons are already defined, add them too!
-        self.net.add(self.gf_neuron, self.ttm_neuron, self.psi_neuron)
-
-        # AI GENERATED CODE IS ABOVE
-
-
-
-
 
     def setting_leak_reversal_potential(self):
         # Sets all of the starting voltage
@@ -148,6 +146,23 @@ class gfs_object:
         self.ttm_neuron.v = self.leak_reversal_potential
         self.psi_neuron.v = self.leak_reversal_potential
         self.dlmn_neuron.v = self.leak_reversal_potential
+
+    # This is where I include the synapses that connected each of the
+    # neurons, either through electrical of chemical connections
+    # This is how the GFS will be wired
+    def wiring_neurons(self):
+        self.gf_to_psi = Synapses(self.gf_neuron, self.psi_neuron, model=self.eqs_for_gap)
+        # Connect the electrically, connect electrically
+
+        self.gf_to_ttm = Synapses(self.gf_neuron, self.ttm_neuron.dendrite, model=self.eqs_for_gap)
+        # Same thing for this neuron here, connect electrically
+
+        # Here is the chemically synapse, this does not an equation for spiking behavior it is
+        # Very, very passive
+        self.psi_to_dlm = Synapse(self.psi_neuron, self.dlmn_neuron, on_pre='v_post+=w')
+
+
+
 
     # AI Generated code, Will be replaced
     # WARNING AI GENERATED CODE, FOR TESTING PURPOSES ONLY
