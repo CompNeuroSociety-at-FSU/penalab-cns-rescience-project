@@ -113,6 +113,11 @@ class gfs_object:
         dh/dt = (hinf - h)/(htau) : 1
         dn/dt = (ninf - n )/(ntau): 1
         '''
+
+        eqs_for_gap = '''
+        
+
+        '''
         
 
         # Here are the neurons that will created from the number of neurons listed
