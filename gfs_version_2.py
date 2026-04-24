@@ -114,9 +114,9 @@ class gfs_object:
         dn/dt = (ninf - n )/(ntau): 1
         '''
 
-        eqs_for_gap = '''
-        
-
+        self.eqs_for_gap = '''
+        w: siemens
+        I = (v - vgap)*g*(0.001) : amp (summed)
         '''
         
 
@@ -146,6 +146,22 @@ class gfs_object:
         self.ttm_neuron.v = self.leak_reversal_potential
         self.psi_neuron.v = self.leak_reversal_potential
         self.dlmn_neuron.v = self.leak_reversal_potential
+
+    # This is where I include the synapses that connected each of the
+    # neurons, either through electrical of chemical connections
+    # This is how the GFS will be wired
+    def wiring_neurons(self):
+        self.gf_to_psi = Synapses(self.gf_neuron, self.psi_neuron, model=self.eqs_for_gap)
+        # Connect the electrically, connect electrically
+
+        self.gf_to_ttm = Synapses(self.gf_neuron, self.ttm_neuron.dendrite, model=self.eqs_for_gap)
+        # Same thing for this neuron here, connect electrically
+
+        # Here is the chemically synapse, this does not an equation for spiking behavior it is
+        # Very, very passive
+        self.psi_to_dlm = Synapse(self.psi_neuron, self.dlmn_neuron, on_pre='v_post+=w')
+
+
 
 
     # AI Generated code, Will be replaced
