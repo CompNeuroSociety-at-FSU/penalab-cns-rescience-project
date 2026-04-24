@@ -29,7 +29,7 @@ class gfs_object:
         # First we are putting the default morphology (or shape) for the gf neuron
         # The GF neuron does not contains any axons or dendrites, so one cylinder will represent this neuron
         # But it does have electrical synpases between the axon of the PSI and the dendrite of the TTmn
-        self.gf_neuron_morph = Cylinder(diameter = 8*um, length=400*um)
+        self.gf_neuron_morph = Cylinder(diameter=8*um, length=400*um, n=51)
 
 
         # Here is the morphology for the TTMn neuron, it contains two dendrites and one active axon
@@ -51,9 +51,11 @@ class gfs_object:
         prox_diam = 2*um
         dist_diam = 4*um
 
-        axon_diameters = [prox_diam, dist_diam]
+        # Section with n compartments expects n+1 diameter values for tapering.
+        axon_diameters = numpy.linspace(prox_diam/um, dist_diam/um, 52) * um
 
-        self.dlmn_neuron_morph = Section(diameter=axon_diameters, length=50*um, n=51)
+        axon_lengths = numpy.ones(51) * (50.0/51.0) * um
+        self.dlmn_neuron_morph = Section(diameter=axon_diameters, length=axon_lengths, n=51)
        
         self.dlmn_neuron_morph.dendrite = Cylinder(diameter=2*um, length=100*um)
 
@@ -76,7 +78,7 @@ class gfs_object:
         self.old_gap_conductance = 34.5*uS
         self.chemical_synapse_rise = 0.1*ms
         self.chemical_synapse_decay = 1*ms
-        self.chemical_synapse_reversal = 0
+        self.chemical_synapse_reversal = 0*mV
         self.chemical_synapse_delay = 0.15*ms
         self.chemical_synapse_peak_conductance = 80*uS
         self.neuromuscular_junction_delay = 0.35*ms
@@ -85,59 +87,86 @@ class gfs_object:
         self.potassium_reversal_potential = -74*mV
 
 
-        # This will be the set of equations that are used for the active sections of the neurons (axons)
-        # Still trying to figure the m, h and n, number values, just remove them for now
-        eqs_for_active= '''
-        Im = -g_bar_Na * (m**3) * h *(v-E_Na) - g_bar_K * (n**4) * (v-E_k) -gl * (v - El):amp/meter**2
-        I_inj = amp (point current) # The current the included externally from the membrane
+        # HH-like active membrane equations adapted from the original NEURON mechanisms.
+        eqs_for_active = '''
+        Im = gl*(El - v) + gnatbar*(m**3)*h*(E_Na - v) + gnapbar*p*(E_Na - v) + gkbar*n*(E_k - v) + I_gap/area + g_chem*(E_syn - v)/area + I_inj/area : amp/meter**2
+        I_inj : amp (point current)
+        I_gap : amp (point current)
+        dg_chem/dt = -g_chem/tau_syn : siemens
 
-        # Define the maxium sodium (Na) and potassium conductances (K)
-        g_bar_Na: siemens/meter**2
-        g_bar_K: siemens/meter**2
+        dm/dt = (m_inf - m)/m_tau : 1
+        dh/dt = (h_inf - h)/h_tau : 1
+        dn/dt = (n_inf - n)/n_tau : 1
+        dp/dt = (p_inf - p)/p_tau : 1
 
+        m_inf = 1/(1 + exp(clip((v - (-29.13*mV))/(-8.92*mV), -50, 50))) : 1
+        h_inf = 1/(1 + exp(clip((v - (-47.0*mV))/(5.0*mV), -50, 50))) : 1
+        n_inf = 1/(1 + exp(clip((v - (-12.85*mV))/(-19.91*mV), -50, 50))) : 1
+        p_inf = 1/(1 + exp(clip((v - (-48.77*mV))/(-3.68*mV), -50, 50))) : 1
 
-        # To calculate the m, n, and h, it is necessary to caclulate the steady state 
-        # value given by the boltzmann function (page 20 of Gunay), probability
-        # for the gates of the ions to be open or closed
-        m_inf = 1 / (1 + exp((v-(-29.13*mV))/ (-8.92*mV))) : 1
-        n_inf =  1 / (1 + exp((v-(-12.85*mV))/ (-19.91*mV))) : 1
-        h_inf = 1 / (1 + exp((v-(-47.0*mV))/ (5.0*mV))) : 1
+        m_tau = (0.13 + 3.43/(1 + exp(clip((v + 45.35*mV)/(5.98*mV), -50, 50))))*ms : second
+        h_tau = (0.36 + exp(clip((v + 20.65*mV)/(-10.47*mV), -50, 50)))*ms : second
+        n_tau = 1.0*ms : second
+        p_tau = 1.0*ms : second
 
-        # This calculates the time constants, or speed which the gates open/close
-        # at a given voltage
-        m_tau = (0.13 + 3.43/(1+exp((v+45.35*mV)/(59.6*mV))) * ms : second
-        h_tau =  (0.36 + exp((v + 20.65*mV) / (-10.47*mV))) * ms : second
-        n_tau = (2.03 + 1.96 / (1 + exp((v - 29.83*mV) / (3.12*mV)))) * ms : second
-        
-        dm/dt = (minf - m)/(mtau) : 1
-        dh/dt = (hinf - h)/(htau) : 1
-        dn/dt = (ninf - n )/(ntau): 1
-        '''
-
-        self.eqs_for_gap = '''
-        w: siemens
-        I = (v - vgap)*g*(0.001) : amp (summed)
+        gl : siemens/meter**2
+        gnatbar : siemens/meter**2
+        gnapbar : siemens/meter**2
+        gkbar : siemens/meter**2
+        E_Na : volt
+        E_k : volt
+        El : volt
+        E_syn : volt
+        tau_syn : second
         '''
         
 
         # Here are the neurons that will created from the number of neurons listed
         self.gf_neuron = SpatialNeuron(morphology=self.gf_neuron_morph, model=eqs_for_active,
-                                       Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
-                                       namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential,
-                                       'E_Na': self.sodium_reversal_potential, 'E_k': self.potassium_reversal_potential})
+                                       Cm=self.specific_membrane_capitance, Ri=self.specific_axial_resistance,
+                                       method='exponential_euler', threshold='v > -20*mV', refractory=1*ms)
         self.ttm_neuron = SpatialNeuron(morphology=self.ttmn_neuron_morph, model=eqs_for_active,
-                                         Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
-                                         namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential,
-                                         'E_Na': self.sodium_reversal_potential, 'E_k': self.potassium_reversal_potential})
-        
+                                        Cm=self.specific_membrane_capitance, Ri=self.specific_axial_resistance,
+                                        method='exponential_euler', threshold='v > -20*mV', refractory=1*ms)
         self.psi_neuron = SpatialNeuron(morphology=self.psi_neuron_morph, model=eqs_for_active,
-                                         Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
-                                         namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential,
-                                         'E_Na': self.sodium_reversal_potential, 'E_k': self.potassium_reversal_potential})
+                                        Cm=self.specific_membrane_capitance, Ri=self.specific_axial_resistance,
+                                        method='exponential_euler', threshold='v > -20*mV', refractory=1*ms)
         self.dlmn_neuron = SpatialNeuron(morphology=self.dlmn_neuron_morph, model=eqs_for_active,
-                                          Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
-                                          namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential,
-                                          'E_Na': self.sodium_reversal_potential, 'E_k': self.potassium_reversal_potential})
+                                         Cm=self.specific_membrane_capitance, Ri=self.specific_axial_resistance,
+                                         method='exponential_euler', threshold='v > -20*mV', refractory=1*ms)
+
+        self.params = {
+            'g_gap': self.young_gap_conductance,
+            'gnatbar': self.maximal_t_conductance,
+            'gkbar': self.maximal_v_conductance,
+            'gleak': self.leak_conductance,
+        }
+
+        for neuron in [self.gf_neuron, self.ttm_neuron, self.psi_neuron, self.dlmn_neuron]:
+            neuron.gl = self.leak_conductance
+            neuron.gnatbar = self.maximal_t_conductance
+            neuron.gnapbar = self.maximal_p_conductance
+            neuron.gkbar = self.maximal_v_conductance
+            neuron.E_Na = self.sodium_reversal_potential
+            neuron.E_k = self.potassium_reversal_potential
+            neuron.El = self.leak_reversal_potential
+            neuron.E_syn = self.chemical_synapse_reversal
+            neuron.tau_syn = self.chemical_synapse_decay
+            neuron.g_chem = 0*siemens
+            neuron.I_gap = 0*amp
+            neuron.I_inj = 0*amp
+            neuron.m = 'm_inf'
+            neuron.h = 'h_inf'
+            neuron.n = 'n_inf'
+            neuron.p = 'p_inf'
+
+        self.GF = self.gf_neuron
+        self.TTMn = self.ttm_neuron
+        self.PSI = self.psi_neuron
+        self.DLMn = self.dlmn_neuron
+
+        self.setting_leak_reversal_potential()
+        self.wiring_neurons()
         
 
     def setting_leak_reversal_potential(self):
@@ -151,22 +180,98 @@ class gfs_object:
     # neurons, either through electrical of chemical connections
     # This is how the GFS will be wired
     def wiring_neurons(self):
-        self.gf_to_psi = Synapses(self.gf_neuron, self.psi_neuron, model=self.eqs_for_gap)
-        # Connect the electrically, connect electrically
+        # Keep these values close to the original NEURON defaults.
+        ttmn_syn_pre_loc = 1.0
+        ttmn_syn_post_loc = 0.2
+        psi_syn_pre_loc = 0.9
+        psi_syn_post_loc = 0.5
+        dlmn_syn_pre_loc = 0.85
+        dlmn_syn_post_loc = 0.25
 
-        self.gf_to_ttm = Synapses(self.gf_neuron, self.ttm_neuron.dendrite, model=self.eqs_for_gap)
-        # Same thing for this neuron here, connect electrically
+        gf_ttmn_delay = 1.0*ms
+        gf_psi_delay = 1.0*ms
+        psi_dlmn_delay = self.chemical_synapse_delay
 
-        # Here is the chemically synapse, this does not an equation for spiking behavior it is
-        # Very, very passive
-        self.psi_to_dlm = Synapse(self.psi_neuron, self.dlmn_neuron, on_pre='v_post+=w')
+        gf_ttmn_wt = 0.00
+        gf_psi_wt = 0.00
+        psi_dlmn_wt = 0.08
+
+        gf_n = len(self.gf_neuron)
+        ttmn_med_n = len(self.ttm_neuron.medial_dendrite)
+        psi_n = len(self.psi_neuron)
+        psi_den_n = len(self.psi_neuron.dendrite)
+        dlmn_den_n = len(self.dlmn_neuron.dendrite)
+
+        gf_ttmn_i = int(round(ttmn_syn_pre_loc * (gf_n - 1)))
+        gf_psi_i = int(round(psi_syn_pre_loc * (gf_n - 1)))
+        psi_dlmn_i = int(round(dlmn_syn_pre_loc * (psi_n - 1)))
+        ttmn_j = int(round(ttmn_syn_post_loc * (ttmn_med_n - 1)))
+        psi_j = int(round(psi_syn_post_loc * (psi_den_n - 1)))
+        dlmn_j = int(round(dlmn_syn_post_loc * (dlmn_den_n - 1)))
+
+        # NetCon-like event connections from the original model.
+        self.GF_TTMn_con = Synapses(
+            self.gf_neuron,
+            self.ttm_neuron.medial_dendrite,
+            model='w : siemens',
+            on_pre='g_chem_post += w',
+            delay=gf_ttmn_delay,
+        )
+        self.GF_TTMn_con.connect(i=[gf_ttmn_i], j=[ttmn_j])
+        self.GF_TTMn_con.w = gf_ttmn_wt*uS
+
+        self.GF_PSI_con = Synapses(
+            self.gf_neuron,
+            self.psi_neuron.dendrite,
+            model='w : siemens',
+            on_pre='g_chem_post += w',
+            delay=gf_psi_delay,
+        )
+        self.GF_PSI_con.connect(i=[gf_psi_i], j=[psi_j])
+        self.GF_PSI_con.w = gf_psi_wt*uS
+
+        self.PSI_DLMn_con = Synapses(
+            self.psi_neuron,
+            self.dlmn_neuron.dendrite,
+            model='w : siemens',
+            on_pre='g_chem_post += w',
+            delay=psi_dlmn_delay,
+        )
+        self.PSI_DLMn_con.connect(i=[psi_dlmn_i], j=[dlmn_j])
+        self.PSI_DLMn_con.w = psi_dlmn_wt*uS
+
+        # Gap currents mirror the original gap2 behavior: i = g*(v_pre - v_post).
+        self.GF_TTMn_gap = Synapses(
+            self.gf_neuron,
+            self.ttm_neuron.medial_dendrite,
+            model='g_gap : siemens\nI_gap_post = g_gap*(v_pre - v_post) : amp (summed)',
+        )
+        self.GF_TTMn_gap.connect(i=[gf_ttmn_i], j=[ttmn_j])
+        self.GF_TTMn_gap.g_gap = self.young_gap_conductance
+
+        self.GF_PSI_gap = Synapses(
+            self.gf_neuron,
+            self.psi_neuron.dendrite,
+            model='g_gap : siemens\nI_gap_post = g_gap*(v_pre - v_post) : amp (summed)',
+        )
+        self.GF_PSI_gap.connect(i=[gf_psi_i], j=[psi_j])
+        self.GF_PSI_gap.g_gap = self.young_gap_conductance
+
+        self.net = Network(
+            self.gf_neuron,
+            self.ttm_neuron,
+            self.psi_neuron,
+            self.dlmn_neuron,
+            self.GF_TTMn_con,
+            self.GF_PSI_con,
+            self.PSI_DLMn_con,
+            self.GF_TTMn_gap,
+            self.GF_PSI_gap,
+        )
+        self.gaps = self.GF_TTMn_gap
 
 
 
-
-    # AI Generated code, Will be replaced
-    # WARNING AI GENERATED CODE, FOR TESTING PURPOSES ONLY
-    # AI GENERATED CODE BEWARE, AI GENERATED AHEAD
     def setup_monitors(self):
         """
         Initializes StateMonitors for all neurons in the circuit.
@@ -179,17 +284,16 @@ class gfs_object:
 
         # Spatial neuron (DLMn)
         # Recording at the dendrite tip (input) and axon terminal (output)
-        self.mon_dlmn_dend = StateMonitor(self.dlmn_neuron.dendrite[0], 'v', record=True)
-        self.mon_dlmn_axon = StateMonitor(self.dlmn_neuron.axon[50], 'v', record=True)
+        self.mon_dlmn = StateMonitor(self.dlmn_neuron, 'v', record=[0, len(self.dlmn_neuron)-1])
 
 
         ## AI Generated code 
         # Tell the network to include these monitors in the simulation
-        self.net.add(self.mon_dlmn_dend, self.mon_dlmn_axon)
+        self.net.add(self.mon_gf, self.mon_ttm, self.mon_psi, self.mon_dlmn)
 
         ## AI generated code
 
-    def inject_and_run(self, current_amp=1*nA, start_time=10*ms, pulse_duration=2*ms, cooldown=20*ms):
+    def inject_and_run(self, current_amp=5*nA, start_time=10*ms, pulse_duration=0.03*ms, cooldown=20*ms):
         """
         Runs the simulation, injects a square pulse of current into the DLMn dendrite, 
         and then continues running to observe the voltage decay.
@@ -197,12 +301,33 @@ class gfs_object:
     
         self.net.run(start_time)
 
-        self.dlmn_neuron.I_inj[self.dlmn_neuron.dendrite[0]] = current_amp
+        self.gf_neuron.I_inj[0] = current_amp
         self.net.run(pulse_duration)
 
-        self.dlmn_neuron.I_inj[self.dlmn_neuron.dendrite[0]] = 0*amp
+        self.gf_neuron.I_inj[0] = 0*amp
         self.net.run(cooldown)
 
-    # Phew, away from AI  generated code
-    
+    def set_param(self, param, val):
+        if param == 'g_gap':
+            self.GF_TTMn_gap.g_gap = val
+            self.GF_PSI_gap.g_gap = val
+            self.params['g_gap'] = val
+            return
+
+        if param == 'gnatbar':
+            for neuron in [self.GF, self.TTMn, self.PSI, self.DLMn]:
+                neuron.gnatbar = val
+            self.params['gnatbar'] = val
+            return
+
+        if param == 'gkbar':
+            for neuron in [self.GF, self.TTMn, self.PSI, self.DLMn]:
+                neuron.gkbar = val
+            self.params['gkbar'] = val
+            return
+
+        if param == 'gleak':
+            for neuron in [self.GF, self.TTMn, self.PSI, self.DLMn]:
+                neuron.gl = val
+            self.params['gleak'] = val
     
