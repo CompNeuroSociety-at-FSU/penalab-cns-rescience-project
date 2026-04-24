@@ -91,15 +91,10 @@ class gfs_object:
         Im = -g_bar_Na * (m**3) * h *(v-E_Na) - g_bar_K * (n**4) * (v-E_k):amp/meter**2
         I_inj = amp (point current) # The current the included externally from the membrane
 
-        # dm/dt = (minf - m)/(mtau) : 1 # 1 on the side represents whether it is unit-less or not!
+        # dm/dt = alpham * (1-m) - betam
         # dh/dt = (hinf - h)/(htau) : 1
         # dn/dt = (ninf - n )/(ntau): 1
-
-        # minf = 1/(1+exp((vm-v1_2m)/km)) : 1
-        # mtau = 1 * ms : second
-
         '''
-        
         
 
         # These will be the set of equations that will be used for the passive section of the neurons
@@ -109,12 +104,13 @@ class gfs_object:
         '''
     
         # Here are the neurons that will created from the number of neurons listed
-        self.gf_neuron = SpatialNeuron(morphology=self.gf_neuron_morph, model=eqs,
+        self.gf_neuron = SpatialNeuron(morphology=self.gf_neuron_morph, model=eqs_for_active,
                                        Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
                                        namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential})
-        self.ttm_neuron = SpatialNeuron(morphology=self.ttmn_neuron_morph, model=eqs,
+        self.ttm_neuron = SpatialNeuron(morphology=self.ttmn_neuron_morph, model=eqs_for_active,
                                          Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
                                          namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential})
+        
         self.psi_neuron = SpatialNeuron(morphology=self.psi_neuron_morph, model=eqs,
                                          Cm=self.specific_membrane_capitance,Ri= self.specific_axial_resistance,
                                          namespace={'gl': self.leak_conductance, 'El' : self.leak_reversal_potential})
