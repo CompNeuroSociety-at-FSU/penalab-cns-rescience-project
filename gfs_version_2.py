@@ -90,7 +90,14 @@ class gfs_object:
         eqs_for_active= '''
         Im = -g_bar_Na * (m**3) * h *(v-E_Na) - g_bar_K * (n**4) * (v-E_k):amp/meter**2
         I_inj = amp (point current) # The current the included externally from the membrane
+        # (I need X equation):
 
+        # m, n, and h - I need equations
+        # whatis m, n , and h supposed to represent?
+        # m, n and h are proabilities between 0 and 1, of the ion channels opening and closing
+        # Essentially is meant to represent the function of a cell moves (ions???) inside
+        # and 
+        # 
         # dm/dt = alpham * (1-m) - betam
         # dh/dt = (hinf - h)/(htau) : 1
         # dn/dt = (ninf - n )/(ntau): 1
