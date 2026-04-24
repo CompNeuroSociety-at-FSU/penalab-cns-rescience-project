@@ -1,12 +1,14 @@
 #Created by Gillian Durta
 from brian2 import *
 import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 from gfs_version_2 import gfs_object
 
 matplotlib.rcParams['svg.fonttype'] = 'none'
+prefs.codegen.target = 'numpy'
 
 # Initialize FULL Brian2 network
 
@@ -53,25 +55,19 @@ def run_scan(param1, vals1, param2, vals2):
             # SET PARAMETERS
             # -------------------------
             if param1 == 'g_gap':
-                net.gaps.g = v1
-            else:
-                setattr(net.params, param1, v1)
+                net.set_param('g_gap', v1)
 
-            setattr(net.params, param2, v2)
+            net.set_param(param2, v2)
 
-            # Apply conductance updates
-            for neuron in [GF, TTMn, PSI, DLMn]:
-                if param2 == 'gnatbar':
-                    neuron.gNa = v2
-                elif param2 == 'gkbar':
-                    neuron.gK = v2
-                elif param2 == 'gleak':
-                    neuron.gL = v2
+            # Brief GF injection to evoke a spike, close to original stimulation style.
+            GF.I_inj[0] = 5*nA
+            net.net.run(0.03*ms)
+            GF.I_inj[0] = 0*amp
 
             # -------------------------
             # RUN SIMULATION
             # -------------------------
-            run(5*ms)
+            net.net.run(5*ms)
 
             # -------------------------
             # STORE RESULTS (placeholder)
@@ -125,10 +121,4 @@ for param2 in param2s:
 
 plt.tight_layout()
 plt.savefig('gfs_param_scan_conductances_brian2.png')
-plt.show()
-
-    ii += 1
-
-plt.tight_layout()
-plt.savefig('gfs_param_scan_conductances_brian2.png')
-plt.show()
+plt.close(fig1)
