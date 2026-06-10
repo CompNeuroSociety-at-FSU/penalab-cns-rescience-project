@@ -8,6 +8,10 @@
 
 # Gillian added the shapes of neurons PSI and DLMn
 
+##############################################
+### Juan changes highlighted in this style ###
+##############################################
+
 from brian2 import *
 import matplotlib
 import numpy
@@ -74,8 +78,27 @@ class gfs_object:
         self.maximal_t_conductance = 300 * mS / cm**2
         self.maximal_p_conductance = 0.11*mS / cm**2
         self.maximal_v_conductance = 10*mS / cm**2
-        self.young_gap_conductance = 135*uS
-        self.old_gap_conductance = 34.5*uS
+        
+        ##############################################
+        ###--------------Changes made--------------###
+        ##############################################
+        # Paper/ModelDB gap-junction units.
+        #
+        # The original NEURON mechanism in channels/gap2.mod declares:
+        #
+        #   g = 0 (nanosiemens)
+        #   i = (v - vgap) * g * 0.001
+        #
+        # The 0.001 factor converts mV * nS into nA. The published
+        # young value 135.0 and old value 34.5 should be interpreted as nS,
+        # not uS. Keeping them in uS makes the electrical coupling 1000 times
+        # too strong and produces the instability we were seeing. This copied
+        # model keeps the ModelDB point-conductance scale.
+        # changed to      self.old_gap_conductance = 34.5*nS   self.young_gap_conductance = 135*nS
+        self.young_gap_conductance = 135*nS
+        self.old_gap_conductance = 34.5*nS
+
+        
         self.chemical_synapse_rise = 0.1*ms
         self.chemical_synapse_decay = 1*ms
         self.chemical_synapse_reversal = 0*mV
@@ -88,8 +111,36 @@ class gfs_object:
 
 
         # HH-like active membrane equations adapted from the original NEURON mechanisms.
+        #
+        ##############################################
+        ###--------------Changes made--------------###
+        ##############################################
+        # Stability fix in this copied version:
+        #
+        # Brian2 SpatialNeuron has special handling for variables declared with
+        # the "(point current)" flag. During model construction, Brian2 rewrites
+        # the membrane equation and inserts each point current as current/area.
+        # In the submitted model, I_gap and I_inj were both declared as point
+        # currents *and* manually included in Im as I_gap/area and I_inj/area.
+        # Brian2 already inserts point currents into SpatialNeuron membrane
+        # equations as current/area. Manually adding /area again double-counts
+        # the point current density. Even at the correct paper gap value
+        # (135*nS), that double insertion changes the intended experiment; at
+        # the mistaken 135*uS value, it becomes numerically explosive.
+        #
+        # Therefore this copied model leaves point currents out of Im. Brian2
+        # adds them to Im automatically. The chemical synapse conductance is not
+        # a Brian2 point-current variable here, so it remains explicitly divided
+        # by area.
+        #
+        # The gap-junction current is still one-sided, matching ModelDB's
+        # gap2.mod usage. The NEURON code places the point process on the
+        # TTMn/PSI side and points vgap at the GF voltage; it does not insert a
+        # reciprocal gap current into the GF section. That is not the most
+        # biophysically symmetric implementation, but it is the closest Brian2
+        # translation for paper replication.
         eqs_for_active = '''
-        Im = gl*(El - v) + gnatbar*(m**3)*h*(E_Na - v) + gnapbar*p*(E_Na - v) + gkbar*n*(E_k - v) + I_gap/area + g_chem*(E_syn - v)/area + I_inj/area : amp/meter**2
+        Im = gl*(El - v) + gnatbar*(m**3)*h*(E_Na - v) + gnapbar*p*(E_Na - v) + gkbar*n*(E_k - v) + g_chem*(E_syn - v)/area : amp/meter**2
         I_inj : amp (point current)
         I_gap : amp (point current)
         dg_chem/dt = -g_chem/tau_syn : siemens
@@ -155,6 +206,23 @@ class gfs_object:
             neuron.g_chem = 0*siemens
             neuron.I_gap = 0*amp
             neuron.I_inj = 0*amp
+
+            
+            ##############################################
+            ###--------------Changes made--------------###
+            ##############################################
+            # Initialize voltage before initializing voltage-dependent gates.
+            #
+            # In the original model, gates were set to m_inf/h_inf/n_inf/p_inf
+            # before the membrane voltage was reset to leak_reversal_potential.
+            # Brian2 evaluates those string expressions using the current value
+            # of v at assignment time, so the original ordering can initialize
+            # gates at Brian2's default voltage rather than at -85 mV. 
+            # added neuron.v = self.leak_reversal_potential #
+            
+            neuron.v = self.leak_reversal_potential
+
+            
             neuron.m = 'm_inf'
             neuron.h = 'h_inf'
             neuron.n = 'n_inf'
