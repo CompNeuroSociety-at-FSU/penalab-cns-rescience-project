@@ -4,6 +4,9 @@ A computational neuroscience project with the goal of replicating the following 
 
 Repository to the original paper's code can be found here: https://github.com/ModelDBRepository/245415
 
+And forked version with minor fixes can be found here:
+https://github.com/CompNeuroSociety-at-FSU/fork-escape-response
+
 Example of a previously published computational neuroscience ReScience C paper can be found here: https://rescience.github.io/bibliography/Reynes_2025.html 
 
 ## Table of Contents
